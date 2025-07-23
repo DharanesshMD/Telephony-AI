@@ -1,0 +1,98 @@
+---
+
+# Summary of Changes Made to `MainActivity.java`
+
+## 1. **Initial Setup and Permissions**
+- Added runtime permission requests for:
+  - `READ_PHONE_STATE`
+  - `READ_CALL_LOG`
+- Implemented a method to check and request all permissions at once on first launch.
+
+## 2. **User Guidance for Xiaomi/MIUI**
+- Created a dialog to guide users through enabling Autostart and other necessary settings.
+- Added checks to ensure the app continues to prompt for permissions until all are granted.
+
+## 3. **Defensive Programming**
+- Added null checks for `TextView` initializations to prevent crashes if the layout is incorrect.
+- Wrapped risky code (like starting services and showing dialogs) in try/catch blocks to log errors.
+
+## 4. **Autostart Permission Handling**
+- Implemented a dialog that instructs users to enable Autostart in MIUI settings.
+- Ensured that the app does not get stuck in a loop by not re-opening the Autostart settings after the user returns.
+
+## 5. **Logging for Debugging**
+- Added logging statements to capture errors and null references, aiding in debugging crashes.
+
+## 6. **Code Structure**
+- Refactored the permission request logic to be more user-friendly and efficient.
+- Created a `continueSetup()` method to handle the setup flow after returning from system settings.
+
+## 7. **Sequential Permission Flow and UI Enhancements**
+- Replaced `checkAndRequestAllPermissions()` with `requestNextPermissionOrSetting()` to manage a sequential, step-by-step permission request flow.
+- Utilized `currentPermissionStep` to guide the user through basic permissions, notification access, battery optimization, autostart, and final steps.
+- Improved user experience by presenting each request individually and waiting for user acceptance.
+- Updated `onRequestPermissionsResult` and `onActivityResult` to advance `currentPermissionStep` and continue the flow after user interaction with permission/setting prompts.
+- Added `import android.annotation.Nullable;` to resolve compilation issues related to `@Nullable` annotation.
+
+## 8. **Dependency Management**
+- Corrected import statements for `@Nullable` and `@NonNull` annotations to `androidx.annotation.Nullable` and `androidx.annotation.NonNull` respectively.
+- Added `androidx.annotation:annotation:1.7.0` dependency to `app/build.gradle` to resolve compilation issues.
+
+## 9. **"Final Steps Window" Fix**
+- Modified `requestNextPermissionOrSetting` to conditionally skip the "Final Steps" dialog if all core permissions are already granted at `currentPermissionStep == 4`, proceeding directly to starting the `CallCounterService`.
+
+## 10. **Persistent Autostart Dialog Fix**
+- Introduced `KEY_AUTOSTART_ADDRESSED` `SharedPreferences` key in `MainActivity.java` to track if the autostart permission has been addressed.
+- Modified `showAutostartDialogIfNeeded()` to check this preference and set it to `true` when the user interacts with the dialog (either by continuing or skipping), preventing repeated prompts.
+
+## 11. **Persistent Battery Optimization Dialog Fix**
+- Introduced `KEY_BATTERY_OPTIMIZATION_ADDRESSED` `SharedPreferences` key in `MainActivity.java` to track if the battery optimization prompt has been addressed.
+- Modified `requestNextPermissionOrSetting()` to check this preference and set it to `true` when the user interacts with the dialog (either by going to settings or skipping), preventing repeated prompts.
+
+---
+
+### Example Code Snippets
+
+#### Permission Request Logic
+```java
+private void checkAndRequestAllPermissions() {
+    List<String> missingPermissions = new ArrayList<>();
+    for (String perm : REQUIRED_PERMISSIONS) {
+        if (ActivityCompat.checkSelfPermission(this, perm) != PackageManager.PERMISSION_GRANTED) {
+            missingPermissions.add(perm);
+        }
+    }
+    if (!missingPermissions.isEmpty()) {
+        ActivityCompat.requestPermissions(this, missingPermissions.toArray(new String[0]), PERMISSION_REQUEST_CODE);
+        return;
+    }
+    // Continue with other setup...
+}
+```
+
+#### Autostart Dialog
+```java
+private void showAutostartDialogIfNeeded() {
+    if (autostartDialogShown) return;
+    autostartDialogShown = true;
+    new AlertDialog.Builder(this)
+        .setTitle("Enable Autostart (MIUI)")
+        .setMessage("To ensure Call Counter works reliably, please enable Autostart for this app in the next screen. After enabling, return here and tap Continue.")
+        .setCancelable(false)
+        .setPositiveButton("Continue", new DialogInterface.OnClickListener() {
+            @Override
+            public void onClick(DialogInterface dialog, int which) {
+                // Open Autostart settings
+            }
+        })
+        .setNegativeButton("Skip", null)
+        .show();
+}
+```
+
+---
+
+### Next Steps
+- If the app continues to crash, please provide the crash log from the logcat file you mentioned. This will help identify the exact cause of the issue.
+
+---

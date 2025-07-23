@@ -1,0 +1,278 @@
+An agentic IDE can be tasked with developing an Android application that monitors incoming phone and WhatsApp calls, displays a running count in the user interface, and maintains a persistent notification to indicate its operational status. This guide provides a comprehensive walkthrough of the necessary steps, permissions, and code implementation.
+
+1. Project Setup and Permissions
+
+First, set up a new Android Studio project. Then, you need to declare the necessary permissions in your AndroidManifest.xml file.
+
+Generated xml
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    package="com.example.callcounter">
+
+    <uses-permission android:name="android.permission.READ_PHONE_STATE" />
+    <uses-permission android:name="android.permission.READ_CALL_LOG" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name="android.permission.BIND_NOTIFICATION_LISTENER_SERVICE" />
+
+    <application
+        ...>
+        ...
+    </application>
+</manifest>
+
+2. Detecting Normal Phone Calls
+
+To detect standard incoming phone calls, you'll use the TelephonyManager and a PhoneStateListener. This is accomplished by creating a BroadcastReceiver.
+
+Create a BroadcastReceiver for Phone Calls:
+
+Generated java
+public class CallReceiver extends BroadcastReceiver {
+
+    private static int callCount = 0;
+
+    @Override
+    public void onReceive(Context context, Intent intent) {
+        String state = intent.getStringExtra(TelephonyManager.EXTRA_STATE);
+        if (state.equals(TelephonyManager.EXTRA_STATE_RINGING)) {
+            callCount++;
+            // Send a broadcast to update the UI
+            Intent uiIntent = new Intent("UPDATE_UI");
+            uiIntent.putExtra("call_count", callCount);
+            LocalBroadcastManager.getInstance(context).sendBroadcast(uiIntent);
+        }
+    }
+}
+IGNORE_WHEN_COPYING_START
+content_copy
+download
+Use code with caution.
+Java
+IGNORE_WHEN_COPYING_END
+
+Register the Receiver in AndroidManifest.xml:
+
+Generated xml
+<receiver android:name=".CallReceiver" android:exported="true">
+    <intent-filter>
+        <action android:name="android.intent.action.PHONE_STATE" />
+    </intent-filter>
+</receiver>
+IGNORE_WHEN_COPYING_START
+content_copy
+download
+Use code with caution.
+Xml
+IGNORE_WHEN_COPYING_END
+3. Detecting Incoming WhatsApp Calls
+
+Detecting WhatsApp calls is more complex as there is no direct API. The most reliable method is to listen for notifications from WhatsApp using a NotificationListenerService.
+
+Create a NotificationListenerService:
+
+Generated java
+public class WhatsAppCallDetector extends NotificationListenerService {
+
+    private static int whatsAppCallCount = 0;
+
+    @Override
+    public void onNotificationPosted(StatusBarNotification sbn) {
+        if (sbn.getPackageName().equals("com.whatsapp")) {
+            Notification notification = sbn.getNotification();
+            String notificationText = notification.extras.getString("android.text");
+            if (notificationText != null && notificationText.toLowerCase().contains("incoming voice call")) {
+                whatsAppCallCount++;
+                // Send a broadcast to update the UI
+                Intent uiIntent = new Intent("UPDATE_UI");
+                uiIntent.putExtra("whatsapp_call_count", whatsAppCallCount);
+                LocalBroadcastManager.getInstance(this).sendBroadcast(uiIntent);
+            }
+        }
+    }
+}
+IGNORE_WHEN_COPYING_START
+content_copy
+download
+Use code with caution.
+Java
+IGNORE_WHEN_COPYING_END
+
+Register the Service in AndroidManifest.xml:
+
+Generated xml
+<service android:name=".WhatsAppCallDetector"
+    android:label="@string/app_name"
+    android.permission.BIND_NOTIFICATION_LISTENER_SERVICE"
+    android:exported="true">
+    <intent-filter>
+        <action android:name="android.service.notification.NotificationListenerService" />
+    </intent-filter>
+</service>
+IGNORE_WHEN_COPYING_START
+content_copy
+download
+Use code with caution.
+Xml
+IGNORE_WHEN_COPYING_END
+
+Request Notification Access: The user must manually grant notification access to your app. You can prompt them to do so with the following code in your MainActivity:
+
+Generated java
+if (!isNotificationServiceEnabled()) {
+    startActivity(new Intent("android.settings.ACTION_NOTIFICATION_LISTENER_SETTINGS"));
+}
+
+private boolean isNotificationServiceEnabled() {
+    String pkgName = getPackageName();
+    final String flat = Settings.Secure.getString(getContentResolver(),
+            "enabled_notification_listeners");
+    if (!TextUtils.isEmpty(flat)) {
+        final String[] names = flat.split(":");
+        for (String name : names) {
+            final ComponentName cn = ComponentName.unflattenFromString(name);
+            if (cn != null) {
+                if (TextUtils.equals(pkgName, cn.getPackageName())) {
+                    return true;
+                }
+            }
+        }
+    }
+    return false;
+}
+IGNORE_WHEN_COPYING_START
+content_copy
+download
+Use code with caution.
+Java
+IGNORE_WHEN_COPYING_END
+4. Creating a Persistent Notification with a Stop Button
+
+A foreground service is required to display a persistent notification.
+
+Create a Foreground Service:
+
+Generated java
+public class CallCounterService extends Service {
+
+    private static final int NOTIFICATION_ID = 1;
+    private static final String CHANNEL_ID = "CallCounterChannel";
+
+    @Override
+    public int onStartCommand(Intent intent, int flags, int startId) {
+        if ("STOP_ACTION".equals(intent.getAction())) {
+            stopForeground(true);
+            stopSelf();
+            return START_NOT_STICKY;
+        }
+
+        createNotificationChannel();
+
+        Intent stopIntent = new Intent(this, CallCounterService.class);
+        stopIntent.setAction("STOP_ACTION");
+        PendingIntent pendingStopIntent = PendingIntent.getService(this, 0, stopIntent, PendingIntent.FLAG_CANCEL_CURRENT);
+
+        Notification notification = new NotificationCompat.Builder(this, CHANNEL_ID)
+                .setContentTitle("Call Counter Running")
+                .setContentText("Monitoring incoming calls.")
+                .setSmallIcon(R.drawable.ic_launcher_foreground)
+                .setOngoing(true)
+                .addAction(R.drawable.ic_stop, "Stop", pendingStopIntent)
+                .build();
+
+        startForeground(NOTIFICATION_ID, notification);
+
+        return START_STICKY;
+    }
+
+    private void createNotificationChannel() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            NotificationChannel serviceChannel = new NotificationChannel(
+                    CHANNEL_ID,
+                    "Call Counter Service Channel",
+                    NotificationManager.IMPORTANCE_DEFAULT
+            );
+            NotificationManager manager = getSystemService(NotificationManager.class);
+            manager.createNotificationChannel(serviceChannel);
+        }
+    }
+
+    @Nullable
+    @Override
+    public IBinder onBind(Intent intent) {
+        return null;
+    }
+}
+IGNORE_WHEN_COPYING_START
+content_copy
+download
+Use code with caution.
+Java
+IGNORE_WHEN_COPYING_END
+
+Start the Service: In your MainActivity, start the service:
+
+Generated java
+Intent serviceIntent = new Intent(this, CallCounterService.class);
+startService(serviceIntent);
+IGNORE_WHEN_COPYING_START
+content_copy
+download
+Use code with caution.
+Java
+IGNORE_WHEN_COPYING_END
+5. Updating the UI with the Call Count
+
+To update the UI in your MainActivity from the BroadcastReceiver and NotificationListenerService, you'll use a LocalBroadcastManager.
+
+In your MainActivity:
+
+Generated java
+private TextView normalCallCountTextView;
+private TextView whatsappCallCountTextView;
+private int normalCallCount = 0;
+private int whatsappCallCount = 0;
+
+private BroadcastReceiver uiUpdateReceiver = new BroadcastReceiver() {
+    @Override
+    public void onReceive(Context context, Intent intent) {
+        if (intent.hasExtra("call_count")) {
+            normalCallCount = intent.getIntExtra("call_count", 0);
+            normalCallCountTextView.setText("Normal Calls: " + normalCallCount);
+        }
+        if (intent.hasExtra("whatsapp_call_count")) {
+            whatsappCallCount = intent.getIntExtra("whatsapp_call_count", 0);
+            whatsappCallCountTextView.setText("WhatsApp Calls: " + whatsappCallCount);
+        }
+    }
+};
+
+@Override
+protected void onCreate(Bundle savedInstanceState) {
+    super.onCreate(savedInstanceState);
+    setContentView(R.layout.activity_main);
+
+    normalCallCountTextView = findViewById(R.id.normal_call_count);
+    whatsappCallCountTextView = findViewById(R.id.whatsapp_call_count);
+
+    LocalBroadcastManager.getInstance(this).registerReceiver(uiUpdateReceiver, new IntentFilter("UPDATE_UI"));
+}
+
+@Override
+protected void onDestroy() {
+    super.onDestroy();
+    LocalBroadcastManager.getInstance(this).unregisterReceiver(uiUpdateReceiver);
+}
+IGNORE_WHEN_COPYING_START
+content_copy
+download
+Use code with caution.
+Java
+IGNORE_WHEN_COPYING_END
+
+This guide provides the core components for building the described Android application. Remember to handle runtime permissions for READ_PHONE_STATE on Android 6.0 (API level 23) and above. Additionally, for the stop button icon, you'll need to add an appropriate drawable resource to your project.
+
+Google Search Suggestions
+Display of Search Suggestions is required when using Grounding with Google Search. Learn more
+detect incoming calls android programmatically
+detect incoming whatsapp calls android programmatically
+android create persistent notification with stop button
+android update UI from background service

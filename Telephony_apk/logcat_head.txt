@@ -1,0 +1,200 @@
+{
+  "metadata": {
+    "device": {
+      "deviceId": "adb-972fc56c-73Xgkb._adb-tls-connect._tcp",
+      "name": "Xiaomi 2107113SI",
+      "serialNumber": "adb-972fc56c-73Xgkb._adb-tls-connect._tcp",
+      "isOnline": true,
+      "release": "14",
+      "sdk": 34,
+      "featureLevel": 34,
+      "model": "2107113SI",
+      "type": "HANDHELD",
+      "isEmulator": false
+    },
+    "filter": "package:mine ",
+    "projectApplicationIds": [
+      "com.example.callcounter",
+      "com.example.callcounter.test"
+    ]
+  },
+  "logcatMessages": [
+    {
+      "header": {
+        "logLevel": "INFO",
+        "pid": 2093,
+        "tid": 2093,
+        "applicationId": "cnss-daemon",
+        "processName": "cnss-daemon",
+        "tag": "cnss-daemon",
+        "timestamp": {
+          "seconds": 1753171409,
+          "nanos": 762000000
+        }
+      },
+      "message": "nl80211_response_handler: cmd 103, vendorID 4980, subcmd 13  received"
+    },
+    {
+      "header": {
+        "logLevel": "INFO",
+        "pid": 1997,
+        "tid": 4323,
+        "applicationId": "system_server",
+        "processName": "system_server",
+        "tag": "NetworkBoostStatusManager",
+        "timestamp": {
+          "seconds": 1753171409,
+          "nanos": 843000000
+        }
+      },
+      "message": "handle: 105"
+    },
+    {
+      "header": {
+        "logLevel": "ERROR",
+        "pid": 1145,
+        "tid": 2856,
+        "applicationId": "android.hardware.camera.provider@2.4-service_64",
+        "processName": "android.hardware.camera.provider@2.4-service_64",
+        "tag": "CamX",
+        "timestamp": {
+          "seconds": 1753171409,
+          "nanos": 919000000
+        }
+      },
+      "message": "[ERROR][NCS    ] camxncsintfqsee.cpp:2555 FillSensorData() Invalid sensor index -1"
+    },
+    {
+      "header": {
+        "logLevel": "DEBUG",
+        "pid": 16975,
+        "tid": 16975,
+        "applicationId": "com.google.android.gms",
+        "processName": "com.google.android.gms",
+        "tag": "BoundBrokerSvc",
+        "timestamp": {
+          "seconds": 1753171411,
+          "nanos": 328000000
+        }
+      },
+      "message": "onUnbind: Intent { act\u003dcom.google.android.gms.appset.service.START dat\u003dchimera-action:/... cmp\u003dcom.google.android.gms/.chimera.GmsApiService }"
+    },
+    {
+      "header": {
+        "logLevel": "INFO",
+        "pid": 1997,
+        "tid": 7644,
+        "applicationId": "system_server",
+        "processName": "system_server",
+        "tag": "SmartPower: com.android.vending/10210(26519)",
+        "timestamp": {
+          "seconds": 1753171411,
+          "nanos": 332000000
+        }
+      },
+      "message": "idle-\u003ebackground(12259ms) R(service unbind com.android.vending/com.google.android.finsky.developergroupidinfo.DeveloperGroupIdInfoService) adj\u003d905."
+    },
+    {
+      "header": {
+        "logLevel": "INFO",
+        "pid": 1997,
+        "tid": 3076,
+        "applicationId": "system_server",
+        "processName": "system_server",
+        "tag": "MiuiNetworkPolicy",
+        "timestamp": {
+          "seconds": 1753171411,
+          "nanos": 334000000
+        }
+      },
+      "message": "updateUidState uid \u003d 10210, uidState \u003d 10"
+    },
+    {
+      "header": {
+        "logLevel": "INFO",
+        "pid": 1997,
+        "tid": 3076,
+        "applicationId": "system_server",
+        "processName": "system_server",
+        "tag": "MiuiNetworkPolicy",
+        "timestamp": {
+          "seconds": 1753171411,
+          "nanos": 346000000
+        }
+      },
+      "message": "updateUidState uid \u003d 10210, uidState \u003d 19"
+    },
+    {
+      "header": {
+        "logLevel": "DEBUG",
+        "pid": 4093,
+        "tid": 22812,
+        "applicationId": "com.android.networkstack.process",
+        "processName": "com.android.networkstack.process",
+        "tag": "ApfFilter",
+        "timestamp": {
+          "seconds": 1753171412,
+          "nanos": 32000000
+        }
+      },
+      "message": "(wlan0): Adding RA fe80::30:3ce0:5335:7ff -\u003e ff02::1 0s fdc3:cf86:a9ea:784c::/64 1800s/1800s RIO 1800s fdaf:3c09:8558::/64 "
+    },
+    {
+      "header": {
+        "logLevel": "ERROR",
+        "pid": 1145,
+        "tid": 2856,
+        "applicationId": "android.hardware.camera.provider@2.4-service_64",
+        "processName": "android.hardware.camera.provider@2.4-service_64",
+        "tag": "CamX",
+        "timestamp": {
+          "seconds": 1753171412,
+          "nanos": 119000000
+        }
+      },
+      "message": "[ERROR][NCS    ] camxncsintfqsee.cpp:2555 FillSensorData() Invalid sensor index -1"
+    },
+    {
+      "header": {
+        "logLevel": "WARN",
+        "pid": 17574,
+        "tid": 17616,
+        "applicationId": "com.google.android.gms.persistent",
+        "processName": "com.google.android.gms.persistent",
+        "tag": "BpBinder",
+        "timestamp": {
+          "seconds": 1753171413,
+          "nanos": 478000000
+        }
+      },
+      "message": "PerfMonitor binderTransact: time\u003d263ms interface\u003dandroid.app.IActivityManager code\u003d39"
+    },
+    {
+      "header": {
+        "logLevel": "INFO",
+        "pid": 2093,
+        "tid": 2093,
+        "applicationId": "cnss-daemon",
+        "processName": "cnss-daemon",
+        "tag": "cnss-daemon",
+        "timestamp": {
+          "seconds": 1753171413,
+          "nanos": 480000000
+        }
+      },
+      "message": "nl80211 response handler invoked"
+    },
+    {
+      "header": {
+        "logLevel": "INFO",
+        "pid": 2093,
+        "tid": 2093,
+        "applicationId": "cnss-daemon",
+        "processName": "cnss-daemon",
+        "tag": "cnss-daemon",
+        "timestamp": {
+          "seconds": 1753171413,
+          "nanos": 480000000
+        }
+      },
+      "message": "nl80211_response_handler: cmd 103, vendorID 4980, subcmd 13  received"
