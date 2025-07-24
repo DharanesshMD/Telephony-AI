@@ -56,7 +56,9 @@ public class MainActivity extends AppCompatActivity {
     private static final int PERMISSION_REQUEST_CODE = 1;
     private static final String[] REQUIRED_PERMISSIONS = {
         Manifest.permission.READ_PHONE_STATE,
-        Manifest.permission.READ_CALL_LOG
+        Manifest.permission.READ_CALL_LOG,
+        Manifest.permission.ANSWER_PHONE_CALLS,
+        Manifest.permission.POST_NOTIFICATIONS
     };
 
     private int currentPermissionStep = 0; // 0: basic permissions, 1: notification access, 2: battery optimization, 3: autostart, 4: final steps

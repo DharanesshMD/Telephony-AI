@@ -11,6 +11,7 @@ import android.os.IBinder;
 import androidx.annotation.Nullable;
 import androidx.core.app.NotificationCompat;
 import android.util.Log;
+import android.widget.Toast;
 
 public class CallCounterService extends Service {
 
@@ -20,6 +21,7 @@ public class CallCounterService extends Service {
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
         Log.d("CallCounter", "CallCounterService onStartCommand: action=" + (intent != null ? intent.getAction() : "null"));
+        Toast.makeText(this, "CallCounterService started (foreground)", Toast.LENGTH_SHORT).show();
         if (intent != null && "STOP_ACTION".equals(intent.getAction())) {
             Log.d("CallCounter", "CallCounterService received STOP_ACTION");
             stopForeground(true);
@@ -51,7 +53,7 @@ public class CallCounterService extends Service {
             NotificationChannel serviceChannel = new NotificationChannel(
                     CHANNEL_ID,
                     "Call Counter Service Channel",
-                    NotificationManager.IMPORTANCE_DEFAULT
+                    NotificationManager.IMPORTANCE_HIGH
             );
             NotificationManager manager = getSystemService(NotificationManager.class);
             manager.createNotificationChannel(serviceChannel);
@@ -62,5 +64,12 @@ public class CallCounterService extends Service {
     @Override
     public IBinder onBind(Intent intent) {
         return null;
+    }
+
+    @Override
+    public void onDestroy() {
+        super.onDestroy();
+        Log.w("CallCounter", "CallCounterService destroyed!");
+        Toast.makeText(this, "CallCounterService was killed!", Toast.LENGTH_LONG).show();
     }
 }
