@@ -1,150 +1,24 @@
-Of course. Here is a complete guide for an agentic AI to implement an automatic call-answering feature for both normal and WhatsApp calls into the existing Android codebase.
+# WhatsApp Auto-Answer Fix Guide
 
-Task: Implement Automatic Call Answering
+## Problem Analysis
+The current WhatsApp call auto-answering implementation has limitations because:
+1. WhatsApp's notification actions may not always work reliably
+2. Security restrictions on newer Android versions limit notification action execution
+3. The current approach only tries notification actions once without fallbacks
 
-Goal: Modify the Android application to automatically answer incoming calls instantly, whether they are standard cellular calls or WhatsApp voice calls. This guide will walk you through the necessary permissions, code changes, and potential conflicts.
+## Solution Overview
+Implement a multi-layered approach with the following methods:
+1. **Enhanced Notification Action Method** - Improved detection and triggering
+2. **Direct App Launch Method** - Launch WhatsApp directly when call detected
+3. **Accessibility Service Method** - Use Android Accessibility Service to simulate screen taps
+4. **Gesture-based Method** - Perform gestures at common answer button locations
 
-Step 1: Add Necessary Permissions
+## Implementation Steps
 
-The ability to answer phone calls is protected by a specific permission. You must declare this in the manifest file.
+### Step 1: Replace WhatsAppCallDetector.java
+Replace the entire content of `WhatsAppCallDetector.java` with the enhanced version that includes:
 
-File to Modify: Telephony_apk/app/src/main/AndroidManifest.xml
-
-Action: Add the ANSWER_PHONE_CALLS permission. This is required for the TelecomManager to accept calls.
-
-Generated xml
-<?xml version="1.0" encoding="utf-8"?>
-<manifest xmlns:android="http://schemas.android.com/apk/res/android">
-
-    <uses-permission android:name="android.permission.READ_PHONE_STATE" />
-    <uses-permission android:name="android.permission.READ_CALL_LOG" />
-    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
-    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_PHONE_CALL" />
-    <uses-permission android:name="android.permission.MANAGE_OWN_CALLS" />
-    <!-- ADD THIS PERMISSION -->
-    <uses-permission android:name="android.permission.ANSWER_PHONE_CALLS" />
-
-    <application
-        ...>
-        ...
-    </application>
-
-</manifest>
-
-Step 2: Update the Permission Request Flow
-
-Now that the permission is declared, you must request it from the user at runtime. Integrate it into the existing robust permission-handling logic in MainActivity.
-
-File to Modify: Telephony_apk/app/src/main/java/com/example/callcounter/MainActivity.java
-
-Action: Add Manifest.permission.ANSWER_PHONE_CALLS to the REQUIRED_PERMISSIONS array. The existing sequential permission handler will automatically pick it up and request it from the user.
-
-Generated java
-public class MainActivity extends AppCompatActivity {
-
-    //... existing code
-
-    private static final int PERMISSION_REQUEST_CODE = 1;
-    private static final String[] REQUIRED_PERMISSIONS = {
-        Manifest.permission.READ_PHONE_STATE,
-        Manifest.permission.READ_CALL_LOG,
-        // ADD THE NEW PERMISSION TO THE ARRAY
-        Manifest.permission.ANSWER_PHONE_CALLS
-    };
-
-    //... rest of the class
-}
-IGNORE_WHEN_COPYING_START
-content_copy
-download
-Use code with caution.
-Java
-IGNORE_WHEN_COPYING_END
-Step 3: Implement Auto-Answer for Normal Phone Calls
-
-The logic to answer a standard call should be placed in the CallReceiver, which already detects when a phone is ringing.
-
-File to Modify: Telephony_apk/app/src/main/java/com/example/callcounter/CallReceiver.java
-
-Action: In the onReceive method, when the state is EXTRA_STATE_RINGING, get the TelecomManager service and call acceptRingingCall().
-
-Generated java
-package com.example.callcounter;
-
-import android.content.BroadcastReceiver;
-import android.content.Context;
-import android.content.Intent;
-import android.content.pm.PackageManager;
-import android.os.Build;
-import android.telecom.TelecomManager;
-import android.telephony.TelephonyManager;
-import androidx.core.app.ActivityCompat;
-import androidx.localbroadcastmanager.content.LocalBroadcastManager;
-import android.util.Log;
-import android.Manifest;
-
-public class CallReceiver extends BroadcastReceiver {
-
-    private static int callCount = 0;
-
-    @Override
-    public void onReceive(Context context, Intent intent) {
-        String state = intent.getStringExtra(TelephonyManager.EXTRA_STATE);
-        Log.d("CallCounter", "CallReceiver onReceive: state=" + state);
-        if (state != null && state.equals(TelephonyManager.EXTRA_STATE_RINGING)) {
-            // --- EXISTING LOGIC ---
-            callCount++;
-            Log.d("CallCounter", "Incremented callCount: " + callCount);
-            // Send a broadcast to update the UI
-            Intent uiIntent = new Intent("UPDATE_UI");
-            uiIntent.putExtra("call_count", callCount);
-            LocalBroadcastManager.getInstance(context).sendBroadcast(uiIntent);
-
-            // --- NEW AUTO-ANSWER LOGIC ---
-            answerPhoneCall(context);
-        }
-    }
-
-    private void answerPhoneCall(Context context) {
-        // TelecomManager is available from API 21 (Lollipop)
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
-            TelecomManager telecomManager = (TelecomManager) context.getSystemService(Context.TELECOM_SERVICE);
-            if (telecomManager == null) {
-                Log.e("CallCounter", "TelecomManager is null.");
-                return;
-            }
-
-            // Check for ANSWER_PHONE_CALLS permission before proceeding
-            if (ActivityCompat.checkSelfPermission(context, Manifest.permission.ANSWER_PHONE_CALLS) != PackageManager.PERMISSION_GRANTED) {
-                Log.e("CallCounter", "ANSWER_PHONE_CALLS permission not granted.");
-                return;
-            }
-
-            try {
-                Log.d("CallCounter", "Attempting to answer call...");
-                telecomManager.acceptRingingCall();
-                Log.d("CallCounter", "Call answered successfully via TelecomManager.");
-            } catch (Exception e) {
-                Log.e("CallCounter", "Error answering call: " + e.getMessage());
-            }
-        }
-    }
-}
-IGNORE_WHEN_COPYING_START
-content_copy
-download
-Use code with caution.
-Java
-IGNORE_WHEN_COPYING_END
-Step 4: Implement Auto-Answer for WhatsApp Calls
-
-Answering WhatsApp calls is not officially supported, so we must rely on interacting with the incoming call notification. This is a fragile but effective method.
-
-File to Modify: Telephony_apk/app/src/main/java/com/example/callcounter/WhatsAppCallDetector.java
-
-Action: After detecting an incoming call notification, iterate through its actions. Find the action that corresponds to "Answer" and trigger its PendingIntent.
-
-Generated java
+```java
 package com.example.callcounter;
 
 import android.app.Notification;
@@ -154,97 +28,563 @@ import android.service.notification.NotificationListenerService;
 import android.service.notification.StatusBarNotification;
 import androidx.localbroadcastmanager.content.LocalBroadcastManager;
 import android.util.Log;
+import android.os.Handler;
+import android.os.Looper;
+import android.content.ComponentName;
+import android.content.pm.PackageManager;
 
 public class WhatsAppCallDetector extends NotificationListenerService {
 
     private static int whatsAppCallCount = 0;
-    // Define keywords for the "Answer" action. Add more for other languages if needed.
-    private static final String[] ANSWER_KEYWORDS = {"answer", "responder"};
+    // Define keywords for the "Answer" action in multiple languages
+    private static final String[] ANSWER_KEYWORDS = {
+        "answer", "responder", "atender", "accept", "acceptar", 
+        "décrocher", "antworten", "rispondere", "接听", "응답"
+    };
+    
+    // Keywords to detect incoming calls
+    private static final String[] CALL_KEYWORDS = {
+        "incoming", "call", "llamada", "appel", "anruf", "chiamata", "来电", "전화"
+    };
 
     @Override
     public void onNotificationPosted(StatusBarNotification sbn) {
         Log.d("CallCounter", "WhatsAppCallDetector onNotificationPosted: package=" + sbn.getPackageName());
+        
         if (sbn.getPackageName().equals("com.whatsapp")) {
             Notification notification = sbn.getNotification();
             if (notification == null) return;
 
-            String notificationText = notification.extras.getString("android.text");
+            String notificationText = extractNotificationText(notification);
             Log.d("CallCounter", "WhatsApp notification text: " + notificationText);
             
-            // Check for keywords indicating an incoming call.
-            if (notificationText != null && notificationText.toLowerCase().contains("incoming") &&
-               (notificationText.toLowerCase().contains("call") || notificationText.toLowerCase().contains("llamada"))) {
-
+            if (isIncomingCall(notificationText)) {
                 // --- EXISTING LOGIC ---
                 whatsAppCallCount++;
                 Log.d("CallCounter", "Incremented whatsAppCallCount: " + whatsAppCallCount);
+                
                 // Send a broadcast to update the UI
                 Intent uiIntent = new Intent("UPDATE_UI");
                 uiIntent.putExtra("whatsapp_call_count", whatsAppCallCount);
                 LocalBroadcastManager.getInstance(this).sendBroadcast(uiIntent);
 
-                // --- NEW AUTO-ANSWER LOGIC ---
-                answerWhatsAppCall(notification);
+                // --- ENHANCED AUTO-ANSWER LOGIC ---
+                attemptWhatsAppAutoAnswer(notification, sbn);
             }
         }
     }
 
-    private void answerWhatsAppCall(Notification notification) {
+    private String extractNotificationText(Notification notification) {
+        StringBuilder text = new StringBuilder();
+        
+        // Try multiple ways to extract notification text
+        if (notification.extras != null) {
+            CharSequence title = notification.extras.getCharSequence(Notification.EXTRA_TITLE);
+            CharSequence content = notification.extras.getCharSequence(Notification.EXTRA_TEXT);
+            CharSequence bigText = notification.extras.getCharSequence(Notification.EXTRA_BIG_TEXT);
+            CharSequence subText = notification.extras.getCharSequence(Notification.EXTRA_SUB_TEXT);
+            
+            if (title != null) text.append(title).append(" ");
+            if (content != null) text.append(content).append(" ");
+            if (bigText != null) text.append(bigText).append(" ");
+            if (subText != null) text.append(subText).append(" ");
+        }
+        
+        return text.toString().toLowerCase();
+    }
+
+    private boolean isIncomingCall(String notificationText) {
+        if (notificationText == null || notificationText.isEmpty()) return false;
+        
+        // Check for call-related keywords
+        boolean hasCallKeyword = false;
+        for (String keyword : CALL_KEYWORDS) {
+            if (notificationText.contains(keyword.toLowerCase())) {
+                hasCallKeyword = true;
+                break;
+            }
+        }
+        
+        // Additional checks for WhatsApp call patterns
+        return hasCallKeyword || 
+               notificationText.contains("voice call") ||
+               notificationText.contains("video call") ||
+               notificationText.contains("calling") ||
+               notificationText.contains("ringing");
+    }
+
+    private void attemptWhatsAppAutoAnswer(Notification notification, StatusBarNotification sbn) {
+        // Method 1: Try notification actions (existing approach, but improved)
+        boolean actionSuccess = tryNotificationAction(notification);
+        
+        if (!actionSuccess) {
+            // Method 2: Try to launch WhatsApp directly with delay
+            tryDirectWhatsAppLaunch();
+            
+            // Method 3: Send broadcast to accessibility service (if implemented)
+            sendAccessibilityBroadcast();
+        }
+    }
+
+    private boolean tryNotificationAction(Notification notification) {
         if (notification.actions == null || notification.actions.length == 0) {
             Log.w("CallCounter", "WhatsApp notification has no actions.");
-            return;
+            return false;
         }
 
         for (Notification.Action action : notification.actions) {
+            if (action.title == null) continue;
+            
             String actionTitle = action.title.toString().toLowerCase();
+            Log.d("CallCounter", "Checking action: " + actionTitle);
+            
             for (String keyword : ANSWER_KEYWORDS) {
                 if (actionTitle.contains(keyword)) {
                     Log.d("CallCounter", "Found WhatsApp 'Answer' action: " + action.title);
                     try {
-                        action.actionIntent.send();
-                        Log.d("CallCounter", "Successfully triggered WhatsApp 'Answer' PendingIntent.");
+                        if (action.actionIntent != null) {
+                            action.actionIntent.send();
+                            Log.d("CallCounter", "Successfully triggered WhatsApp 'Answer' PendingIntent.");
+                            return true;
+                        }
                     } catch (PendingIntent.CanceledException e) {
                         Log.e("CallCounter", "Could not send PendingIntent for WhatsApp: " + e.getMessage());
                     }
-                    return; // Exit after finding and triggering the action
                 }
             }
         }
-        Log.w("CallCounter", "Could not find an 'Answer' action in the WhatsApp notification.");
+        
+        // Try to click on the notification itself as fallback
+        try {
+            if (notification.contentIntent != null) {
+                notification.contentIntent.send();
+                Log.d("CallCounter", "Triggered WhatsApp notification contentIntent as fallback.");
+                
+                // Add delay then try to find answer button via accessibility
+                new Handler(Looper.getMainLooper()).postDelayed(() -> {
+                    sendAccessibilityBroadcast();
+                }, 2000); // 2 second delay
+                
+                return true;
+            }
+        } catch (PendingIntent.CanceledException e) {
+            Log.e("CallCounter", "Could not send contentIntent: " + e.getMessage());
+        }
+        
+        return false;
+    }
+
+    private void tryDirectWhatsAppLaunch() {
+        try {
+            // Launch WhatsApp directly
+            PackageManager pm = getPackageManager();
+            Intent launchIntent = pm.getLaunchIntentForPackage("com.whatsapp");
+            
+            if (launchIntent != null) {
+                launchIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP);
+                startActivity(launchIntent);
+                Log.d("CallCounter", "Launched WhatsApp directly");
+                
+                // Send accessibility broadcast after delay
+                new Handler(Looper.getMainLooper()).postDelayed(() -> {
+                    sendAccessibilityBroadcast();
+                }, 3000); // 3 second delay to let WhatsApp load
+            }
+        } catch (Exception e) {
+            Log.e("CallCounter", "Failed to launch WhatsApp: " + e.getMessage());
+        }
+    }
+
+    private void sendAccessibilityBroadcast() {
+        // Send broadcast to accessibility service to try clicking answer button
+        Intent accessibilityIntent = new Intent("WHATSAPP_AUTO_ANSWER");
+        sendBroadcast(accessibilityIntent);
+        Log.d("CallCounter", "Sent accessibility broadcast for WhatsApp auto-answer");
+    }
+
+    // Additional method to handle notification removal (call ended)
+    @Override
+    public void onNotificationRemoved(StatusBarNotification sbn) {
+        if (sbn.getPackageName().equals("com.whatsapp")) {
+            Log.d("CallCounter", "WhatsApp notification removed - call may have ended");
+        }
     }
 }
-IGNORE_WHEN_COPYING_START
-content_copy
-download
-Use code with caution.
-Java
-IGNORE_WHEN_COPYING_END
-Potential Conflicts and How to Resolve Them
+```
 
-Conflict: ANSWER_PHONE_CALLS Permission Denied
+### Step 2: Create New Accessibility Service
+Create a new file: `WhatsAppAccessibilityService.java`
 
-Symptom: Normal calls are not answered, and an error about missing permission appears in Logcat.
+```java
+package com.example.callcounter;
 
-Resolution: The logic added to MainActivity ensures the user is prompted. The code in CallReceiver also checks for the permission before attempting to answer. If the user denies it, the feature will not work, which is the expected behavior. You could enhance MainActivity to explain why the permission is needed if it's permanently denied.
+import android.accessibilityservice.AccessibilityService;
+import android.accessibilityservice.GestureDescription;
+import android.content.BroadcastReceiver;
+import android.content.Context;
+import android.content.Intent;
+import android.content.IntentFilter;
+import android.graphics.Path;
+import android.graphics.Rect;
+import android.os.Handler;
+import android.os.Looper;
+import android.util.Log;
+import android.view.accessibility.AccessibilityEvent;
+import android.view.accessibility.AccessibilityNodeInfo;
+import android.util.DisplayMetrics;
+import android.view.WindowManager;
+import java.util.List;
 
-Conflict: WhatsApp Notification Structure Changes
+public class WhatsAppAccessibilityService extends AccessibilityService {
 
-Symptom: WhatsApp calls are detected, but not answered. Logs might show that no "Answer" action was found.
+    private static final String TAG = "WhatsAppAccessibility";
+    private BroadcastReceiver autoAnswerReceiver;
+    private Handler handler = new Handler(Looper.getMainLooper());
 
-Resolution: This is the biggest risk. Since this method relies on the text of the notification action, it can be broken by WhatsApp updates or language differences.
+    // Keywords for answer button in different languages
+    private static final String[] ANSWER_BUTTON_TEXTS = {
+        "answer", "accept", "pick up", "responder", "atender", "acceptar",
+        "décrocher", "accepter", "antworten", "annehmen", "rispondere", "accettare",
+        "接听", "接受", "응답", "수락", "받기"
+    };
 
-Mitigation: The provided code uses a String[] of keywords ("answer", "responder"). If the feature fails, the first step is to inspect a new WhatsApp call notification (via logging or debugging) and see what the new text for the "Answer" button is. Add the new keyword to the ANSWER_KEYWORDS array.
+    @Override
+    public void onServiceConnected() {
+        super.onServiceConnected();
+        Log.d(TAG, "WhatsApp Accessibility Service connected");
+        
+        // Register broadcast receiver to listen for auto-answer requests
+        autoAnswerReceiver = new BroadcastReceiver() {
+            @Override
+            public void onReceive(Context context, Intent intent) {
+                if ("WHATSAPP_AUTO_ANSWER".equals(intent.getAction())) {
+                    Log.d(TAG, "Received auto-answer broadcast");
+                    // Add delay to ensure WhatsApp UI is loaded
+                    handler.postDelayed(() -> {
+                        attemptToAnswerCall();
+                    }, 1000);
+                }
+            }
+        };
+        
+        IntentFilter filter = new IntentFilter("WHATSAPP_AUTO_ANSWER");
+        registerReceiver(autoAnswerReceiver, filter);
+    }
 
-Disclaimer: This method is inherently fragile. There is no official API, so this "UI scraping" of the notification is the only viable approach.
+    @Override
+    public void onAccessibilityEvent(AccessibilityEvent event) {
+        // Monitor WhatsApp events for incoming calls
+        if (event.getPackageName() != null && 
+            event.getPackageName().toString().equals("com.whatsapp")) {
+            
+            Log.d(TAG, "WhatsApp accessibility event: " + event.getEventType());
+            
+            // Check if this might be a call screen
+            if (event.getEventType() == AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED ||
+                event.getEventType() == AccessibilityEvent.TYPE_WINDOW_CONTENT_CHANGED) {
+                
+                // Add small delay then check for answer button
+                handler.postDelayed(() -> {
+                    checkForIncomingCall();
+                }, 500);
+            }
+        }
+    }
 
-Conflict: OEM-Specific Restrictions (Xiaomi/MIUI, Huawei, etc.)
+    private void checkForIncomingCall() {
+        AccessibilityNodeInfo rootNode = getRootInActiveWindow();
+        if (rootNode == null) return;
 
-Symptom: Even with all permissions granted, the call does not get answered, or the app is killed before it can act.
+        try {
+            // Look for text that indicates an incoming call
+            if (isIncomingCallScreen(rootNode)) {
+                Log.d(TAG, "Detected incoming call screen, attempting to answer");
+                attemptToAnswerCall();
+            }
+        } finally {
+            rootNode.recycle();
+        }
+    }
 
-Resolution: The existing MainActivity is already well-equipped to handle many of these issues by guiding the user to disable battery optimization and enable autostart. The new feature relies on these same prerequisites. If issues persist, ensure the user has also granted the "Display pop-up windows while running in the background" permission from the App's settings page on their device, as this can sometimes be required to bring the call UI to the foreground.
+    private boolean isIncomingCallScreen(AccessibilityNodeInfo rootNode) {
+        // Check for text indicators of incoming call
+        List<AccessibilityNodeInfo> textNodes = rootNode.findAccessibilityNodeInfosByText("Incoming");
+        if (!textNodes.isEmpty()) {
+            for (AccessibilityNodeInfo node : textNodes) {
+                node.recycle();
+            }
+            return true;
+        }
 
-Conflict: Race Conditions or Timing Issues
+        // Check for other call indicators
+        String[] callIndicators = {"voice call", "video call", "calling", "incoming call"};
+        for (String indicator : callIndicators) {
+            List<AccessibilityNodeInfo> nodes = rootNode.findAccessibilityNodeInfosByText(indicator);
+            if (!nodes.isEmpty()) {
+                for (AccessibilityNodeInfo node : nodes) {
+                    node.recycle();
+                }
+                return true;
+            }
+        }
 
-Symptom: The call rings for a second or two before being answered automatically.
+        return false;
+    }
 
-Resolution: This is expected behavior. There is a small but non-zero delay between the system broadcasting the RINGING state (or posting the notification) and the app's code executing. The delays should be minimal (under a second) and are generally acceptable. There is little that can be done to eliminate this delay entirely.
+    private void attemptToAnswerCall() {
+        AccessibilityNodeInfo rootNode = getRootInActiveWindow();
+        if (rootNode == null) {
+            Log.w(TAG, "No root node available");
+            return;
+        }
+
+        try {
+            boolean answered = false;
+
+            // Method 1: Try to find answer button by text
+            for (String answerText : ANSWER_BUTTON_TEXTS) {
+                List<AccessibilityNodeInfo> answerNodes = rootNode.findAccessibilityNodeInfosByText(answerText);
+                for (AccessibilityNodeInfo answerNode : answerNodes) {
+                    if (answerNode.isClickable()) {
+                        Log.d(TAG, "Found clickable answer button with text: " + answerText);
+                        boolean clicked = answerNode.performAction(AccessibilityNodeInfo.ACTION_CLICK);
+                        Log.d(TAG, "Click result: " + clicked);
+                        if (clicked) {
+                            answered = true;
+                            break;
+                        }
+                    }
+                    answerNode.recycle();
+                }
+                if (answered) break;
+            }
+
+            // Method 2: Try gesture-based approach if button click failed
+            if (!answered) {
+                Log.d(TAG, "Trying gesture-based answer approach");
+                performAnswerGesture();
+            }
+
+        } finally {
+            rootNode.recycle();
+        }
+    }
+
+    private void performAnswerGesture() {
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.N) {
+            // Try tapping at common answer button locations
+            int screenWidth = getScreenWidth();
+            int screenHeight = getScreenHeight();
+            
+            // Common positions for answer buttons (bottom center, bottom left)
+            int[][] tapPositions = {
+                {screenWidth / 2, (int)(screenHeight * 0.85)}, // Bottom center
+                {screenWidth / 4, (int)(screenHeight * 0.85)}, // Bottom left
+                {(int)(screenWidth * 0.75), (int)(screenHeight * 0.85)} // Bottom right
+            };
+            
+            for (int[] position : tapPositions) {
+                performTapGesture(position[0], position[1]);
+                // Add small delay between taps
+                try {
+                    Thread.sleep(500);
+                } catch (InterruptedException e) {
+                    Log.e(TAG, "Sleep interrupted: " + e.getMessage());
+                }
+            }
+        }
+    }
+
+    private void performTapGesture(int x, int y) {
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.N) {
+            Path path = new Path();
+            path.moveTo(x, y);
+            
+            GestureDescription.Builder builder = new GestureDescription.Builder();
+            builder.addStroke(new GestureDescription.StrokeDescription(path, 0, 100));
+            
+            boolean result = dispatchGesture(builder.build(), new GestureResultCallback() {
+                @Override
+                public void onCompleted(GestureDescription gestureDescription) {
+                    Log.d(TAG, "Tap gesture completed at (" + x + ", " + y + ")");
+                }
+
+                @Override
+                public void onCancelled(GestureDescription gestureDescription) {
+                    Log.d(TAG, "Tap gesture cancelled at (" + x + ", " + y + ")");
+                }
+            }, null);
+            
+            Log.d(TAG, "Dispatched tap gesture at (" + x + ", " + y + "): " + result);
+        }
+    }
+
+    private int getScreenWidth() {
+        WindowManager wm = (WindowManager) getSystemService(Context.WINDOW_SERVICE);
+        DisplayMetrics metrics = new DisplayMetrics();
+        wm.getDefaultDisplay().getMetrics(metrics);
+        return metrics.widthPixels;
+    }
+
+    private int getScreenHeight() {
+        WindowManager wm = (WindowManager) getSystemService(Context.WINDOW_SERVICE);
+        DisplayMetrics metrics = new DisplayMetrics();
+        wm.getDefaultDisplay().getMetrics(metrics);
+        return metrics.heightPixels;
+    }
+
+    @Override
+    public void onInterrupt() {
+        Log.d(TAG, "Accessibility service interrupted");
+    }
+
+    @Override
+    public void onDestroy() {
+        super.onDestroy();
+        if (autoAnswerReceiver != null) {
+            unregisterReceiver(autoAnswerReceiver);
+        }
+        Log.d(TAG, "WhatsApp Accessibility Service destroyed");
+    }
+}
+```
+
+### Step 3: Create Accessibility Service Configuration
+Create a new file: `res/xml/accessibility_service_config.xml`
+
+```xml
+<?xml version="1.0" encoding="utf-8"?>
+<accessibility-service xmlns:android="http://schemas.android.com/apk/res/android"
+    android:accessibilityEventTypes="typeWindowStateChanged|typeWindowContentChanged"
+    android:accessibilityFeedbackType="feedbackGeneric"
+    android:accessibilityFlags="flagDefault"
+    android:canPerformGestures="true"
+    android:canRetrieveWindowContent="true"
+    android:description="@string/accessibility_service_description"
+    android:packageNames="com.whatsapp"
+    android:settingsActivity="com.example.callcounter.MainActivity" />
+```
+
+### Step 4: Update AndroidManifest.xml
+Add these permissions and service declaration to AndroidManifest.xml:
+
+```xml
+<!-- Add these permissions -->
+<uses-permission android:name="android.permission.BIND_ACCESSIBILITY_SERVICE" />
+<uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW" />
+
+<!-- Add this service inside <application> tag -->
+<service android:name=".WhatsAppAccessibilityService"
+    android:permission="android.permission.BIND_ACCESSIBILITY_SERVICE"
+    android:exported="true">
+    <intent-filter>
+        <action android:name="android.accessibilityservice.AccessibilityService" />
+    </intent-filter>
+    <meta-data
+        android:name="android.accessibilityservice"
+        android:resource="@xml/accessibility_service_config" />
+</service>
+```
+
+### Step 5: Update strings.xml
+Add accessibility service description to `res/values/strings.xml`:
+
+```xml
+<string name="accessibility_service_description">Allows Call Counter to automatically answer WhatsApp calls by simulating screen taps.</string>
+```
+
+### Step 6: Update MainActivity.java
+Add accessibility service permission request to MainActivity.java in the permission checking section:
+
+```java
+// Add this method to MainActivity.java
+private boolean isAccessibilityServiceEnabled() {
+    String serviceName = getPackageName() + "/" + WhatsAppAccessibilityService.class.getCanonicalName();
+    String enabledServices = Settings.Secure.getString(getContentResolver(),
+            Settings.Secure.ENABLED_ACCESSIBILITY_SERVICES);
+    return enabledServices != null && enabledServices.contains(serviceName);
+}
+
+// Add accessibility service check in requestNextPermissionOrSetting() method
+// Add this as a new case after the autostart case:
+case 4:
+    // Check accessibility service
+    if (!isAccessibilityServiceEnabled()) {
+        Log.d("CallCounter", "Requesting Accessibility Service");
+        new AlertDialog.Builder(this)
+            .setTitle("Enable Accessibility Service")
+            .setMessage("Please enable the Call Counter accessibility service to automatically answer WhatsApp calls.")
+            .setCancelable(false)
+            .setPositiveButton("Go to Settings", new DialogInterface.OnClickListener() {
+                @Override
+                public void onClick(DialogInterface dialog, int which) {
+                    startActivity(new Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS));
+                }
+            })
+            .show();
+    } else {
+        currentPermissionStep++;
+        requestNextPermissionOrSetting(); // Move to next step
+    }
+    break;
+```
+
+## Testing Instructions
+
+1. **Install and Setup**: Install the updated app and go through all permission setup steps
+2. **Enable Accessibility Service**: Make sure to enable the accessibility service in Android Settings > Accessibility
+3. **Test with WhatsApp Call**: Have someone call you on WhatsApp to test the auto-answer functionality
+4. **Check Logs**: Monitor the app logs to see which method successfully answers the call
+5. **Fallback Testing**: If one method fails, the app should automatically try the next method
+
+## Troubleshooting
+
+### If WhatsApp calls still don't auto-answer:
+1. **Check Permissions**: Ensure all permissions are granted including accessibility service
+2. **Battery Optimization**: Make sure the app is excluded from battery optimization
+3. **Background App Limits**: Check if Android is killing the app in background
+4. **WhatsApp Version**: Different WhatsApp versions may have different UI elements
+5. **Language Settings**: The button text detection depends on language - add more keywords if needed
+
+### Debugging Steps:
+1. Enable verbose logging in the app
+2. Check if notifications are being detected correctly
+3. Verify if accessibility service is receiving events
+4. Test gesture positions on your specific device
+
+### Device-Specific Issues:
+- **MIUI/Xiaomi**: Ensure autostart is enabled and app is locked in recent apps
+- **Samsung**: Check if app is in sleeping apps list
+- **OnePlus**: Verify battery optimization settings
+- **Huawei/Honor**: Check protected apps settings
+
+## Alternative Approaches (if above doesn't work)
+
+### Method A: Root-based Solution
+If device is rooted, you can use shell commands to simulate touches:
+- Use `input tap x y` commands via Runtime.exec()
+- Requires root permission and su binary
+
+### Method B: Overlay Approach
+Create a transparent overlay that detects call notifications and shows an auto-answer button:
+- Use SYSTEM_ALERT_WINDOW permission
+- Monitor for WhatsApp call notifications
+- Show overlay with auto-answer option
+
+### Method C: Tasker Integration
+If user has Tasker app:
+- Export auto-answer logic as Tasker tasks
+- Use Tasker's accessibility features
+- More reliable on some devices
+
+## Security Considerations
+- This implementation requires sensitive permissions (accessibility service)
+- Users should be clearly informed about what permissions are used for
+- Consider adding toggle to enable/disable auto-answer feature
+- Log all auto-answer attempts for user awareness
+
+## Performance Optimization
+- Use efficient notification text parsing
+- Implement proper cleanup of accessibility node info
+- Add timeouts to prevent infinite loops
+- Consider battery impact of continuous monitoring

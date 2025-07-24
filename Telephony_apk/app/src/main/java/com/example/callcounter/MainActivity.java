@@ -23,7 +23,13 @@ import android.provider.Settings;
 import android.text.TextUtils;
 import android.util.Log;
 import android.widget.TextView;
+import android.widget.Button;
+import android.widget.Toast;
 import android.os.Build;
+import android.view.View;
+import android.accessibilityservice.AccessibilityServiceInfo;
+import android.view.accessibility.AccessibilityManager;
+import androidx.core.view.accessibility.AccessibilityManagerCompat;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -32,6 +38,7 @@ public class MainActivity extends AppCompatActivity {
 
     private TextView normalCallCountTextView;
     private TextView whatsappCallCountTextView;
+    private Button enableAccessibilityButton;
     private int normalCallCount = 0;
     private int whatsappCallCount = 0;
 
@@ -79,6 +86,18 @@ public class MainActivity extends AppCompatActivity {
             Log.e("CallCounter", "whatsappCallCountTextView is null! Check activity_main.xml for correct ID.");
         }
 
+        enableAccessibilityButton = findViewById(R.id.enableAccessibilityButton);
+        if (enableAccessibilityButton == null) {
+            Log.e("CallCounter", "enableAccessibilityButton is null! Check activity_main.xml for correct ID.");
+        }
+
+        enableAccessibilityButton.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                openAccessibilitySettings();
+            }
+        });
+
         try {
             LocalBroadcastManager.getInstance(this).registerReceiver(uiUpdateReceiver, new IntentFilter("UPDATE_UI"));
         } catch (Exception e) {
@@ -114,11 +133,48 @@ public class MainActivity extends AppCompatActivity {
 
         // Continue setup if needed
         requestNextPermissionOrSetting();
+        checkAccessibilityServiceStatus();
     }
 
     protected void onDestroy() {
         super.onDestroy();
         LocalBroadcastManager.getInstance(this).unregisterReceiver(uiUpdateReceiver);
+    }
+
+    private void openAccessibilitySettings() {
+        Intent intent = new Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS);
+        startActivity(intent);
+    }
+
+    private void checkAccessibilityServiceStatus() {
+        if (isAccessibilityServiceEnabled(this, WhatsAppAccessibilityService.class)) {
+            enableAccessibilityButton.setText("Accessibility Service Enabled");
+            enableAccessibilityButton.setEnabled(false);
+            Toast.makeText(this, "WhatsApp Auto Answer service is enabled.", Toast.LENGTH_SHORT).show();
+        } else {
+            enableAccessibilityButton.setText("Enable Accessibility Service");
+            enableAccessibilityButton.setEnabled(true);
+            Toast.makeText(this, "Please enable WhatsApp Auto Answer service.", Toast.LENGTH_LONG).show();
+        }
+    }
+
+    public static boolean isAccessibilityServiceEnabled(Context context, Class<?> serviceClass) {
+        String serviceId = context.getPackageName() + "/" + serviceClass.getCanonicalName();
+        android.provider.Settings.Secure.getString(context.getContentResolver(),
+                android.provider.Settings.Secure.ENABLED_ACCESSIBILITY_SERVICES);
+        
+        try {
+            AccessibilityManager am = (AccessibilityManager) context.getSystemService(Context.ACCESSIBILITY_SERVICE);
+            List<AccessibilityServiceInfo> enabledServices = AccessibilityManagerCompat.getEnabledAccessibilityServiceList(am, AccessibilityServiceInfo.FEEDBACK_ALL_MASK);
+            for (AccessibilityServiceInfo service : enabledServices) {
+                if (serviceId.equals(service.getId())) {
+                    return true;
+                }
+            }
+        } catch (Exception e) {
+            Log.e("CallCounter", "Error checking accessibility service status: " + e.getMessage());
+        }
+        return false;
     }
 
     private boolean isNotificationServiceEnabled() {

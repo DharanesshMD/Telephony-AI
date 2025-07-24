@@ -1,3 +1,5 @@
 <resources>
-    <string name="app_name">Call Counter</string>
+    <string name="app_name">CallCounter</string>
+    <string name="accessibility_service_label">WhatsApp Auto Answer</string>
+    <string name="accessibility_service_description">Enables automatic answering of WhatsApp calls.</string>
 </resources>
